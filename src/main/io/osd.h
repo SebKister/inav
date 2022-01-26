@@ -248,6 +248,8 @@ typedef enum {
     OSD_AIR_MAX_SPEED,
     OSD_ACTIVE_PROFILE,
     OSD_MISSION,
+    OSD_CRC,
+    OSD_IMU2_CAL,
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 
