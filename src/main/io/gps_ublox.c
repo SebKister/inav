@@ -849,7 +849,7 @@ STATIC_PROTOTHREAD(gpsConfigure)
 
         // u-Blox 9 receivers such as M9N can do 10Hz as well, but the number of used satellites will be restricted to 16.
         // Not mentioned in the datasheet
-        configureRATE(200);
+        configureRATE(100);
         ptWait(_ack_state == UBX_ACK_GOT_ACK);
     }
     else {
