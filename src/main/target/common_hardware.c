@@ -420,4 +420,11 @@
     BUSDEV_REGISTER_I2C(busdev_bno055,      DEVHW_BNO055,       BNO055_I2C_BUS,     0x29,               NONE,           DEVFLAGS_NONE, 0);
 #endif
 
+#ifdef USE_IMU_BNO08X
+#ifndef BNO08X_I2C_BUS
+    #define BNO08X_I2C_BUS BUS_I2C1
+#endif
+    BUSDEV_REGISTER_I2C(busdev_bno08x,      DEVHW_BNO08X,       BNO055_I2C_BUS,     0x4a,               NONE,           DEVFLAGS_NONE, 0);
+#endif
+
 #endif  // USE_TARGET_HARDWARE_DESCRIPTORS

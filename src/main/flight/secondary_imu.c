@@ -36,6 +36,7 @@
 #include "drivers/sensor.h"
 #include "drivers/accgyro/accgyro_bno055.h"
 #include "drivers/accgyro/accgyro_bno055_serial.h"
+#include "drivers/accgyro/accgyro_bno08x.h"
 
 #include "fc/settings.h"
 
@@ -193,6 +194,18 @@ void taskSecondaryImu(timeUs_t currentTimeUs)
             tick = 0;
         } else {
             bno055SerialFetchEulerAngles();
+        }
+    } else if (secondaryImuConfig()->hardwareType == SECONDARY_IMU_BNO08X) {
+        BNO080_FetchEulerAngles(secondaryImuState.eulerAngles.raw);
+        secondaryImuProcess();
+
+        /*
+        * Every 2 seconds fetch current calibration state
+        */
+        if (tick == 20)
+        {
+            secondaryImuState.calibrationStatus = bno055GetCalibStat();
+            tick = 0;
         }
     }
 }

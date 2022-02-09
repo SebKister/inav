@@ -56,6 +56,7 @@ Edit file `./.vscode/c_cpp_properties.json` to setup enabled `defines`
                 "USE_GLOBAL_FUNCTIONS",
                 "USE_DYNAMIC_FILTERS",
                 "USE_IMU_BNO055",
+                "USE_IMU_BNO08X"
                 "USE_SECONDARY_IMU",
                 "USE_DSHOT",
                 "FLASH_SIZE 480",

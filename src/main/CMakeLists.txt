@@ -98,6 +98,8 @@ main_sources(COMMON_SRC
     drivers/accgyro/accgyro_bno055.h
     drivers/accgyro/accgyro_bno055_serial.c
     drivers/accgyro/accgyro_bno055_serial.h
+    drivers/accgyro/accgyro_bno08x.c
+    drivers/accgyro/accgyro_bno08x.h
 
     drivers/adc.c
     drivers/adc.h

@@ -39,6 +39,7 @@ FILE_COMPILE_FOR_SPEED
 #include "drivers/system.h"
 #include "drivers/pwm_output.h"
 #include "drivers/accgyro/accgyro_bno055.h"
+#include "drivers/accgyro/accgyro_bno08x.h"
 
 #include "sensors/sensors.h"
 #include "sensors/diagnostics.h"
