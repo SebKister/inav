@@ -259,6 +259,8 @@ typedef enum {
     OSD_SWITCH_INDICATOR_3,
     OSD_TPA_TIME_CONSTANT,
     OSD_FW_LEVEL_TRIM,
+    OSD_CRC,
+    OSD_IMU2_CAL,
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 
