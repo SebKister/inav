@@ -222,6 +222,175 @@ void osdShowEEPROMSavedNotification(void) {
 }
 
 
+// Function required for CRC
+
+/**
+ * Formats a number given in cents, to support non integer values
+ * without using floating point math. Value is always right aligned
+ * and spaces are inserted before the number to always yield a string
+ * of the same length. If the value doesn't fit into the provided length
+ * it will be divided by scale and true will be returned.
+ */
+bool osdFormatCentiNumberWithZero(char *buff, int32_t centivalue, uint32_t scale, int maxDecimals, int maxScaledDecimals, int length)
+{
+    char *ptr = buff;
+    char *dec;
+    int decimals = maxDecimals;
+    bool negative = false;
+    bool scaled = false;
+
+    buff[length] = '\0';
+
+    if (centivalue < 0) {
+        negative = true;
+        centivalue = -centivalue;
+        length--;
+    }
+
+    int32_t integerPart = centivalue / 100;
+    // 3 decimal digits
+    int32_t millis = (centivalue % 100) * 10;
+
+    int digits = digitCount(integerPart);
+    int remaining = length - digits;
+
+    if (remaining < 0 && scale > 0) {
+        // Reduce by scale
+        scaled = true;
+        decimals = maxScaledDecimals;
+        integerPart = integerPart / scale;
+        // Multiply by 10 to get 3 decimal digits
+        millis = ((centivalue % (100 * scale)) * 10) / scale;
+        digits = digitCount(integerPart);
+        remaining = length - digits;
+    }
+
+    // 3 decimals at most
+    decimals = MIN(remaining, MIN(decimals, 3));
+    remaining -= decimals;
+
+    // Done counting. Time to write the characters.
+
+    // Write spaces at the start
+    while (remaining > 0) {
+        *ptr = 0x30;
+        ptr++;
+        remaining--;
+    }
+
+    // Write the minus sign if required
+    if (negative) {
+        *ptr = '-';
+        ptr++;
+    }
+    // Now write the digits.
+    ui2a(integerPart, 10, 0, ptr);
+    ptr += digits;
+    if (decimals > 0) {
+        *(ptr-1) += SYM_ZERO_HALF_TRAILING_DOT - '0';
+        dec = ptr;
+        int factor = 3; // we're getting the decimal part in millis first
+        while (decimals < factor) {
+            factor--;
+            millis /= 10;
+        }
+        int decimalDigits = digitCount(millis);
+        while (decimalDigits < decimals) {
+            decimalDigits++;
+            *ptr = '0';
+            ptr++;
+        }
+        ui2a(millis, 10, 0, ptr);
+        *dec += SYM_ZERO_HALF_LEADING_DOT - '0';
+    }
+    return scaled;
+}
+
+
+
+
+
+/**
+ * Converts distance into a string based on the current unit system
+ * prefixed by a a symbol to indicate the unit used.
+ * @param dist Distance in centimeters
+ */
+static void osdFormatDistanceSymbolForDTH(char *buff, int32_t dist)
+{
+    switch ((osd_unit_e)osdConfig()->units) {
+        case OSD_UNIT_IMPERIAL:
+            if (osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(dist), FEET_PER_MILE, 0, 3, 3,0)) {
+                buff[3] = SYM_DIST_MI;
+            } else {
+                buff[3] = SYM_DIST_FT;
+            }
+            buff[4] = '\0';
+            break;
+        case OSD_UNIT_UK:
+                    FALLTHROUGH;
+        case OSD_UNIT_METRIC:
+            osdFormatCentiNumberWithZero(buff, dist, METERS_PER_KILOMETER, 0, 3, 4);
+            buff[4] = '\0';
+            break;
+        default:
+            break;
+            
+    }
+}
+
+
+/**
+* Converts altitude into a string based on the current unit system
+* prefixed by a a symbol to indicate the unit used.
+* @param alt Raw altitude/distance (i.e. as taken from baro.BaroAlt in centimeters)
+*/
+void osdFormatAltitudeSymbolForCRC(char *buff, int32_t alt)
+{
+    switch ((osd_unit_e)osdConfig()->units) {
+        case OSD_UNIT_UK:
+                    FALLTHROUGH;
+        case OSD_UNIT_IMPERIAL:
+            if (osdFormatCentiNumber(buff , CENTIMETERS_TO_CENTIFEET(alt), 1000, 0, 2, 3,0)) {
+                // Scaled to kft
+                buff[3] = SYM_ALT_KFT;
+            } else {
+                // Formatted in feet
+                buff[3] = SYM_ALT_FT;
+            }
+            buff[4] = '\0';
+            break;
+        case OSD_UNIT_METRIC:
+            // alt is alredy in cm
+            if (osdFormatCentiNumberWithZero(buff, alt, 1000, 0, 2, 3)) {
+                // Scaled to km
+                buff[3] = SYM_ALT_KM;
+            } else {
+                // Formatted in m
+                buff[3] = SYM_ALT_M;
+            }
+            buff[4] = '\0';
+            break;
+        default:
+            break;
+    }
+}
+
+
+unsigned long hash(unsigned char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
+}
+//End of functions required for CRC
+
+
+
+
 
 bool osdDisplayIsPAL(void)
 {
@@ -1674,7 +1843,7 @@ void osdDisplaySwitchIndicator(const char *swName, int rcValue, char *buff) {
 static bool osdDrawSingleElement(uint8_t item)
 {
     uint16_t pos = osdLayoutsConfig()->item_pos[currentLayout][item];
-    if (!OSD_VISIBLE(pos)) {
+        if (!OSD_VISIBLE(pos) && item != OSD_CRC) {
         return false;
     }
     uint8_t elemPosX = OSD_X(pos);
@@ -1683,6 +1852,64 @@ static bool osdDrawSingleElement(uint8_t item)
     char buff[32] = {0};
 
     switch (item) {
+
+                case OSD_CRC:
+        {
+
+            elemPosX=1;
+            elemPosY=12;
+            //Home Distance 0,1,2,3
+            if (GPS_distanceToHome<9999)
+                osdFormatDistanceSymbolForDTH(&buff[0], GPS_distanceToHome * 100);
+            else
+                osdFormatDistanceSymbolForDTH(&buff[0], 9999 * 100);
+            //Azimuth  4,5,6
+
+            if (osdIsHeadingValid()) {
+                int16_t h = GPS_directionToHome;
+                if (h < 0) {
+                    h += 360;
+                }
+                if(h >= 180)
+                    h = h - 180;
+                else
+                    h = h + 180;
+
+                tfp_sprintf(&buff[4], "%03d", h);
+            } else {
+                buff[4] = buff[5] = buff[6] = '-';
+            }
+
+
+            //Altitude 7,8,9
+            int32_t alt = osdGetAltitude();
+            osdFormatAltitudeSymbolForCRC(&(buff[7]), alt);
+
+
+            //CRC 10,11,12
+            unsigned long hash = 5381;
+
+            for (int (i) = 0; (i) < 10; ++(i)) {
+                hash = ((hash %buff[i]) + hash) + buff[i];
+            }
+             hash=hash%1000;
+            tfp_sprintf(&buff[10], "%03lu", hash);
+
+            buff[13] = '\0';
+
+
+            //map char to modified font
+
+            for (int (i) = 0; (i) < 13; ++(i)) {
+                if(buff[i]!=0x2d)
+               buff[i]=buff[i]-'0'+0xE4;
+                else
+                    buff[i]=0xEE;
+            }
+            break;
+        }
+
+
     case OSD_RSSI_VALUE:
         {
             uint16_t osdRssi = osdConvertRSSI();
@@ -3698,6 +3925,7 @@ void osdDrawNextElement(void)
 
     // Draw artificial horizon + tracking telemtry last
     osdDrawSingleElement(OSD_ARTIFICIAL_HORIZON);
+    osdDrawSingleElement(OSD_CRC);
     if (osdConfig()->telemetry>0){
         osdDisplayTelemetry();
     }
