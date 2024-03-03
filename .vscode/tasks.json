@@ -25,6 +25,18 @@
             "options": {
                 "cwd": "${workspaceFolder}/build"
             }
+        }, {
+            "label": "Build Matek H743",
+            "type": "shell",
+            "command": "make MATEKH743",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            }
         }
         ,
         {
